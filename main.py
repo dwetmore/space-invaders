@@ -14,24 +14,24 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 120)
 
 # Player settings
-PLAYER_SIZE = 50
-PLAYER_SPEED = 6
+PLAYER_SIZE = 32
+PLAYER_SPEED = 5
 player_pos = [WIDTH // 2, HEIGHT - 2 * PLAYER_SIZE]
 
 # Bullet settings
-BULLET_SIZE = 10
-BULLET_SPEED = 10
+BULLET_SIZE = 6
+BULLET_SPEED = 8
 bullets = []
 
 # Invader settings
-INVADER_SIZE = 50
-INVADER_X_GAP = 60
-INVADER_Y_GAP = 40
+INVADER_SIZE = 28
+INVADER_X_GAP = 56
+INVADER_Y_GAP = 34
 INVADER_START_Y = 80
-invader_speed = 2
+invader_speed = 1
 
 
-def create_invaders(rows=4):
+def create_invaders(rows=3):
     return [
         [x, y]
         for x in range(30, WIDTH - INVADER_SIZE, INVADER_X_GAP)
@@ -149,7 +149,8 @@ while running:
     # Start a fresh wave when all invaders are gone or they move off-screen.
     if not invaders or min(inv[1] for inv in invaders) > HEIGHT:
         invaders = create_invaders()
-        invader_speed = invader_speed + (1 if invader_speed > 0 else -1)
+        next_speed = abs(invader_speed) + 0.25
+        invader_speed = next_speed if invader_speed > 0 else -next_speed
 
     draw_player(player_pos)
     draw_bullets(bullets)
