@@ -14,6 +14,12 @@ python3 main.py
 ```bash
 docker build -t localhost:32000/space-invaders:latest .
 docker push localhost:32000/space-invaders:latest
-microk8s kubectl apply -f k8s/pod.yaml
-microk8s kubectl get pod space-invaders
+microk8s kubectl apply -f k8s/deployment.yaml
+microk8s kubectl get pods -l app=space-invaders
+```
+
+Open in browser:
+
+```bash
+http://localhost:30080/vnc.html
 ```

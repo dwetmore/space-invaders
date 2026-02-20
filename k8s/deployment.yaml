@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: space-invaders
+  namespace: default
+  labels:
+    app: space-invaders
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: space-invaders
+  template:
+    metadata:
+      labels:
+        app: space-invaders
+    spec:
+      containers:
+        - name: game
+          image: localhost:32000/space-invaders:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 6080
+              name: novnc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: space-invaders
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: space-invaders
+  ports:
+    - name: novnc
+      protocol: TCP
+      port: 6080
+      targetPort: novnc
+      nodePort: 30080
