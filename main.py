@@ -11,6 +11,7 @@ HEIGHT = 600
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
+GREEN = (0, 255, 120)
 
 # Player settings
 PLAYER_SIZE = 50
@@ -24,12 +25,23 @@ bullets = []
 
 # Invader settings
 INVADER_SIZE = 50
-invaders = [
-    [x, y]
-    for x in range(30, WIDTH - INVADER_SIZE, 60)
-    for y in range(50, HEIGHT // 2 - INVADER_SIZE * 2, 40)
-]
-invader_speed = 1
+INVADER_X_GAP = 60
+INVADER_Y_GAP = 40
+INVADER_START_Y = 80
+invader_speed = 2
+
+
+def create_invaders(rows=4):
+    return [
+        [x, y]
+        for x in range(30, WIDTH - INVADER_SIZE, INVADER_X_GAP)
+        for y in range(
+            INVADER_START_Y, INVADER_START_Y + rows * INVADER_Y_GAP, INVADER_Y_GAP
+        )
+    ]
+
+
+invaders = create_invaders()
 
 # Score
 score = 0
@@ -55,7 +67,7 @@ def draw_bullets(items):
 def draw_invaders(items):
     for invader in items:
         pygame.draw.rect(
-            screen, WHITE, (invader[0], invader[1], INVADER_SIZE, INVADER_SIZE)
+            screen, GREEN, (invader[0], invader[1], INVADER_SIZE, INVADER_SIZE)
         )
 
 
@@ -134,6 +146,9 @@ while running:
     invader_speed = move_invaders(invaders, invader_speed)
     bullets, invaders, gained = check_collision(bullets, invaders)
     score += gained
+    if not invaders:
+        invaders = create_invaders()
+        invader_speed = invader_speed + (1 if invader_speed > 0 else -1)
 
     draw_player(player_pos)
     draw_bullets(bullets)
