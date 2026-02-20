@@ -146,7 +146,8 @@ while running:
     invader_speed = move_invaders(invaders, invader_speed)
     bullets, invaders, gained = check_collision(bullets, invaders)
     score += gained
-    if not invaders:
+    # Start a fresh wave when all invaders are gone or they move off-screen.
+    if not invaders or min(inv[1] for inv in invaders) > HEIGHT:
         invaders = create_invaders()
         invader_speed = invader_speed + (1 if invader_speed > 0 else -1)
 
