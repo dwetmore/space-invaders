@@ -36,18 +36,21 @@ INVADER_SIZE = 28
 INVADER_X_GAP = 56
 INVADER_Y_GAP = 34
 INVADER_START_Y = 80
-LEVEL_SPEED_STEP = 0.3
+INVADER_DROP = 10
+LEVEL_SPEED_STEP = 0.18
+MAX_INVADER_SPEED = 2.4
 level = 1
 invader_speed = 1.0
 PLAYER_LIVES_START = 3
+MAX_PLAYER_LIVES = 5
 lives = PLAYER_LIVES_START
 game_over = False
 last_enemy_shot_at = 0
 
 
 def create_invaders(current_level):
-    rows = min(3 + (current_level - 1) // 2, 7)
-    x_gap = max(38, INVADER_X_GAP - (current_level - 1))
+    rows = min(3 + (current_level - 1) // 3, 5)
+    x_gap = max(44, INVADER_X_GAP - (current_level - 1) // 2)
     return [
         [x, y]
         for x in range(30, WIDTH - INVADER_SIZE, x_gap)
@@ -142,7 +145,7 @@ def move_invaders(items, speed):
     if hit_wall:
         speed *= -1
         for invader in items:
-            invader[1] += INVADER_SIZE // 2
+            invader[1] += INVADER_DROP
 
     return speed
 
@@ -185,7 +188,7 @@ def enemy_fire(current_invaders, current_level):
             front_by_column[column] = inv
 
     shooter = random.choice(list(front_by_column.values()))
-    cooldown_ms = max(220, 700 - (current_level - 1) * 35)
+    cooldown_ms = max(420, 950 - (current_level - 1) * 22)
     return shooter, cooldown_ms
 
 
@@ -285,8 +288,11 @@ while running:
         if not invaders or min(inv[1] for inv in invaders) > HEIGHT:
             level += 1
             invaders = create_invaders(level)
-            next_speed = 1.0 + (level - 1) * LEVEL_SPEED_STEP
+            next_speed = min(MAX_INVADER_SPEED, 1.0 + (level - 1) * LEVEL_SPEED_STEP)
             invader_speed = next_speed if invader_speed > 0 else -next_speed
+            enemy_bullets = []
+            if level % 3 == 0 and lives < MAX_PLAYER_LIVES:
+                lives += 1
 
     draw_player(player_pos)
     draw_bullets(bullets)
