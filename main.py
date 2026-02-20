@@ -1,4 +1,5 @@
 import pygame
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -26,6 +27,9 @@ player_pos = [WIDTH // 2, HEIGHT - 2 * PLAYER_SIZE]
 BULLET_SIZE = 6
 BULLET_SPEED = 8
 bullets = []
+ENEMY_BULLET_SIZE = 6
+ENEMY_BULLET_SPEED = 5
+enemy_bullets = []
 
 # Invader settings
 INVADER_SIZE = 28
@@ -35,6 +39,10 @@ INVADER_START_Y = 80
 LEVEL_SPEED_STEP = 0.3
 level = 1
 invader_speed = 1.0
+PLAYER_LIVES_START = 3
+lives = PLAYER_LIVES_START
+game_over = False
+last_enemy_shot_at = 0
 
 
 def create_invaders(current_level):
@@ -84,6 +92,13 @@ def draw_bullets(items):
         pygame.draw.rect(screen, YELLOW, (bullet[0], bullet[1], BULLET_SIZE, BULLET_SIZE))
 
 
+def draw_enemy_bullets(items):
+    for bullet in items:
+        pygame.draw.rect(
+            screen, RED, (bullet[0], bullet[1], ENEMY_BULLET_SIZE, ENEMY_BULLET_SIZE)
+        )
+
+
 def draw_invaders(items):
     for invader in items:
         x = invader[0]
@@ -96,8 +111,12 @@ def draw_invaders(items):
         pygame.draw.rect(screen, GREEN, (x + INVADER_SIZE - 10, y + INVADER_SIZE - 4, 4, 4))
 
 
-def draw_hud(current_score, current_level):
-    text = font.render(f"Score: {current_score}   Level: {current_level}", True, WHITE)
+def draw_hud(current_score, current_level, current_lives):
+    text = font.render(
+        f"Score: {current_score}   Level: {current_level}   Lives: {current_lives}",
+        True,
+        WHITE,
+    )
     screen.blit(text, (10, 10))
 
 
@@ -105,6 +124,12 @@ def move_bullets(items):
     for bullet in items:
         bullet[1] -= BULLET_SPEED
     return [bullet for bullet in items if bullet[1] > -BULLET_SIZE]
+
+
+def move_enemy_bullets(items):
+    for bullet in items:
+        bullet[1] += ENEMY_BULLET_SPEED
+    return [bullet for bullet in items if bullet[1] < HEIGHT + ENEMY_BULLET_SIZE]
 
 
 def move_invaders(items, speed):
@@ -148,40 +173,128 @@ def check_collision(current_bullets, current_invaders):
     return kept_bullets, kept_invaders, gained
 
 
+def enemy_fire(current_invaders, current_level):
+    if not current_invaders:
+        return None
+
+    # Let only front-line invaders shoot to keep patterns readable.
+    front_by_column = {}
+    for inv in current_invaders:
+        column = inv[0]
+        if column not in front_by_column or inv[1] > front_by_column[column][1]:
+            front_by_column[column] = inv
+
+    shooter = random.choice(list(front_by_column.values()))
+    cooldown_ms = max(220, 700 - (current_level - 1) * 35)
+    return shooter, cooldown_ms
+
+
+def check_player_hit(current_enemy_bullets, pos):
+    player_rect = pygame.Rect(pos[0], pos[1], PLAYER_SIZE, PLAYER_HEIGHT + 5)
+    kept = []
+    hit = False
+    for bullet in current_enemy_bullets:
+        rect = pygame.Rect(
+            bullet[0], bullet[1], ENEMY_BULLET_SIZE, ENEMY_BULLET_SIZE
+        )
+        if rect.colliderect(player_rect):
+            hit = True
+        else:
+            kept.append(bullet)
+    return kept, hit
+
+
+def check_invader_reach_player(current_invaders, pos):
+    return any(inv[1] + INVADER_SIZE >= pos[1] for inv in current_invaders)
+
+
+def draw_game_over():
+    large = pygame.font.SysFont(None, 64)
+    title = large.render("GAME OVER", True, RED)
+    sub = font.render("Press R to restart", True, WHITE)
+    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 50))
+    screen.blit(sub, (WIDTH // 2 - sub.get_width() // 2, HEIGHT // 2 + 10))
+
+
+def reset_game():
+    global player_pos, bullets, enemy_bullets, invaders, invader_speed
+    global score, level, lives, game_over, last_enemy_shot_at
+    player_pos = [WIDTH // 2, HEIGHT - 2 * PLAYER_SIZE]
+    bullets = []
+    enemy_bullets = []
+    score = 0
+    level = 1
+    lives = PLAYER_LIVES_START
+    invader_speed = 1.0
+    invaders = create_invaders(level)
+    game_over = False
+    last_enemy_shot_at = pygame.time.get_ticks()
+
+
 # Main game loop
 running = True
+last_enemy_shot_at = pygame.time.get_ticks()
 while running:
     screen.fill(BLACK)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and not game_over:
             bullets.append(
                 [player_pos[0] + PLAYER_SIZE // 2 - BULLET_SIZE // 2, player_pos[1]]
             )
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_r and game_over:
+            reset_game()
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT] and player_pos[0] > 0:
-        player_pos[0] -= PLAYER_SPEED
-    if keys[pygame.K_RIGHT] and player_pos[0] < WIDTH - PLAYER_SIZE:
-        player_pos[0] += PLAYER_SPEED
+    if not game_over:
+        if keys[pygame.K_LEFT] and player_pos[0] > 0:
+            player_pos[0] -= PLAYER_SPEED
+        if keys[pygame.K_RIGHT] and player_pos[0] < WIDTH - PLAYER_SIZE:
+            player_pos[0] += PLAYER_SPEED
 
-    bullets = move_bullets(bullets)
-    invader_speed = move_invaders(invaders, invader_speed)
-    bullets, invaders, gained = check_collision(bullets, invaders)
-    score += gained
-    # Start a fresh wave when all invaders are gone or they move off-screen.
-    if not invaders or min(inv[1] for inv in invaders) > HEIGHT:
-        level += 1
-        invaders = create_invaders(level)
-        next_speed = 1.0 + (level - 1) * LEVEL_SPEED_STEP
-        invader_speed = next_speed if invader_speed > 0 else -next_speed
+        bullets = move_bullets(bullets)
+        enemy_bullets = move_enemy_bullets(enemy_bullets)
+        invader_speed = move_invaders(invaders, invader_speed)
+        bullets, invaders, gained = check_collision(bullets, invaders)
+        score += gained
+
+        now = pygame.time.get_ticks()
+        shooter_info = enemy_fire(invaders, level)
+        if shooter_info is not None:
+            shooter, cooldown_ms = shooter_info
+            if now - last_enemy_shot_at >= cooldown_ms:
+                enemy_bullets.append(
+                    [
+                        shooter[0] + INVADER_SIZE // 2 - ENEMY_BULLET_SIZE // 2,
+                        shooter[1] + INVADER_SIZE,
+                    ]
+                )
+                last_enemy_shot_at = now
+
+        enemy_bullets, got_hit = check_player_hit(enemy_bullets, player_pos)
+        if got_hit or check_invader_reach_player(invaders, player_pos):
+            lives -= 1
+            player_pos = [WIDTH // 2, HEIGHT - 2 * PLAYER_SIZE]
+            enemy_bullets = []
+            if lives <= 0:
+                game_over = True
+
+        # Start a fresh wave when all invaders are gone or they move off-screen.
+        if not invaders or min(inv[1] for inv in invaders) > HEIGHT:
+            level += 1
+            invaders = create_invaders(level)
+            next_speed = 1.0 + (level - 1) * LEVEL_SPEED_STEP
+            invader_speed = next_speed if invader_speed > 0 else -next_speed
 
     draw_player(player_pos)
     draw_bullets(bullets)
+    draw_enemy_bullets(enemy_bullets)
     draw_invaders(invaders)
-    draw_hud(score, level)
+    draw_hud(score, level, lives)
+    if game_over:
+        draw_game_over()
 
     pygame.display.update()
     clock.tick(30)
